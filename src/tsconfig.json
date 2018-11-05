@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "lib": [ "es7", "dom" ],
+        "module": "commonjs",
+        "outDir": "./",
+        "rootDir": "./"
+    },
+    "include": [
+        "**/*",
+        "./"
+        ],
+    "exclude": [
+        
+    ],
+    "lib": [
+        "dom",
+        "es7"
+    ],
+}
