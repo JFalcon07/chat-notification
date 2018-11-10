@@ -191,7 +191,7 @@ app.post('/getConversations', function (req, res) { return __awaiter(_this, void
                     return [2 /*return*/, res.json(authorized)];
                 }
                 model_1.ChatModel.find({ participants: { $in: mongoose.Types.ObjectId(req.body._id) } })
-                    .populate('participants', 'username')
+                    .populate({ path: 'participants', select: 'username' })
                     .exec(function (err, conversations) {
                     return res.json({ authorized: authorized.authorized, conversations: conversations });
                 });
@@ -209,11 +209,32 @@ app.post('/getConversation', function (req, res) { return __awaiter(_this, void 
                 if (!authorized.authorized) {
                     return [2 /*return*/, res.json(authorized)];
                 }
-                model_1.ChatModel.find({ _id: req.body._id })
-                    .populate('participants', 'username')
-                    .exec(function (err, conversations) {
-                    console.log(conversations);
-                    return res.json({ authorized: authorized.authorized, conversations: conversations });
+                model_1.ChatModel.findOne({ _id: req.body._id })
+                    .populate({ path: 'participants', select: 'username' })
+                    .populate({ path: 'messages', select: '-_id' })
+                    .exec(function (err, conversation) {
+                    return res.json({ authorized: authorized.authorized, conversation: conversation });
+                });
+                return [2 /*return*/];
+        }
+    });
+}); });
+app.post('/newMessage', function (req, res) { return __awaiter(_this, void 0, void 0, function () {
+    var authorized;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, auth(req.body.token)];
+            case 1:
+                authorized = _a.sent();
+                if (!authorized.authorized) {
+                    return [2 /*return*/, res.json(authorized)];
+                }
+                model_1.ChatModel.findOne({ _id: req.body._id }, function (err, conversation) {
+                    createMessage(req.body.user, req.body.message, req.body.type, req.body.date).then(function (message) {
+                        conversation.messages.push(message._id);
+                        conversation.save();
+                    });
+                    return res.json({ authorized: authorized.authorized, conversations: conversation });
                 });
                 return [2 /*return*/];
         }
@@ -228,6 +249,16 @@ function createConversation() {
         _id: mongoose.Types.ObjectId(),
         participants: users,
         messages: new Array()
+    });
+}
+function createMessage(user, message, type, date) {
+    return model_1.MessageModel.create({
+        _id: mongoose.Types.ObjectId(),
+        user: '',
+        sender: user,
+        message: message,
+        type: type,
+        date: date
     });
 }
 app.listen(port, function () {

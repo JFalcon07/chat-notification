@@ -1,7 +1,7 @@
 import * as express from "express";
 import * as bodyParser from "body-parser";
 import * as mongoose from 'mongoose';
-import { UserModel, ChatModel, IUser, MessageModel } from "./model";
+import { UserModel, ChatModel, IChat, IUser, MessageModel } from "./model";
 import { mongoAddr, authServer } from './config';
 import axios, { AxiosRequestConfig } from 'axios';
 
@@ -106,7 +106,7 @@ app.post('/getConversations', async (req,res)=>{
     const authorized = await auth(req.body.token);
     if(!authorized.authorized) { return res.json(authorized)}
     ChatModel.find({ participants: { $in: mongoose.Types.ObjectId(req.body._id) } })
-    .populate('participants','username')
+    .populate({path:'participants',select:'username'})
     .exec((err, conversations) =>{
          return res.json({authorized: authorized.authorized,conversations: conversations});
      })
@@ -115,11 +115,23 @@ app.post('/getConversations', async (req,res)=>{
 app.post('/getConversation', async (req,res)=>{
     const authorized = await auth(req.body.token);
     if(!authorized.authorized) { return res.json(authorized)}
-    ChatModel.find({ _id:req.body._id})
-    .populate('participants','username')
-    .exec((err, conversations) =>{
-        console.log(conversations)
-         return res.json({authorized: authorized.authorized,conversations: conversations});
+    ChatModel.findOne({ _id:req.body._id})
+    .populate({ path: 'participants', select: 'username' })
+    .populate({ path: 'messages', select:'-_id'})
+    .exec((err, conversation) =>{
+         return res.json({authorized: authorized.authorized,conversation: conversation});
+     })
+});
+
+app.post('/newMessage', async (req,res)=>{
+    const authorized = await auth(req.body.token);
+    if(!authorized.authorized) { return res.json(authorized)}
+    ChatModel.findOne({ _id:req.body._id},(err,conversation: IChat)=>{
+        createMessage(req.body.user,req.body.message,req.body.type,req.body.date).then((message)=>{
+            conversation.messages.push(message._id);
+            conversation.save();
+        });
+        return res.json({authorized: authorized.authorized,conversations: conversation});
      })
 });
 
@@ -131,13 +143,14 @@ function createConversation(...users){
     });
 }
 
-function createMessage(user, message){
-    MessageModel.create({
+function createMessage(user, message,type,date){
+    return MessageModel.create({
         _id:  mongoose.Types.ObjectId(),
+        user:'',
         sender: user,
         message: message,
-        type: 'text',
-        date: new Date()
+        type: type,
+        date: date
     });
 }
 

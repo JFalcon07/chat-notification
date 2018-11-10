@@ -26,7 +26,7 @@ export interface IChat extends mongoose.Document {
 export const ChatSchema = new mongoose.Schema({
     _id: mongoose.Schema.Types.ObjectId,
     participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    messages: {type: [{ type: mongoose.Schema.Types.ObjectId}]}
+    messages: {type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message'}]}
 });
 
 export const ChatModel = mongoose.model<IChat>('Chat', ChatSchema);
