@@ -142,20 +142,27 @@ app.post('/addUser', function (req, res) { return __awaiter(_this, void 0, void 
                     if (err) {
                         return res.json({ added: false, message: 'User already added' });
                     }
-                    var added = Boolean(users[0].contacts.includes(users[1]._id) && users[1].contacts.includes(users[0]._id));
-                    if (!users[0].contacts.includes(users[1]._id)) {
+                    var added = false;
+                    if ((users[0].contacts.indexOf(users[1]._id) < 0) && (users[0].contacts.indexOf(users[1]._id) < 0)) {
                         users[0].contacts.push(users[1]._id);
-                        users[0].save();
-                    }
-                    if (!users[1].contacts.includes(users[0]._id)) {
                         users[1].contacts.push(users[0]._id);
+                        users[0].save();
                         users[1].save();
+                        added = true;
                     }
-                    if (!added) {
-                        createConversation(users[0]._id, users[1]._id);
-                        return res.json({ added: true, message: 'User added sucessfully' });
+                    if (added) {
+                        var conversation = createConversation(users[0]._id, users[1]._id);
+                        conversation.then(function (data) {
+                            model_1.ChatModel.findOne({ _id: data._id })
+                                .populate({ path: 'participants', select: 'username' })
+                                .exec(function (err, conversation) {
+                                return res.json(conversation);
+                            });
+                        });
                     }
-                    return res.json({ added: false, message: 'User already added' });
+                    else {
+                        return res.json({ added: false, message: 'User already added' });
+                    }
                 });
                 return [2 /*return*/];
         }
@@ -240,12 +247,33 @@ app.post('/newMessage', function (req, res) { return __awaiter(_this, void 0, vo
         }
     });
 }); });
+app.post('/newConversation', function (req, res) { return __awaiter(_this, void 0, void 0, function () {
+    var authorized;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, auth(req.body.token)];
+            case 1:
+                authorized = _a.sent();
+                if (!authorized.authorized) {
+                    return [2 /*return*/, res.json(authorized)];
+                }
+                createConversation.apply(void 0, req.body.users).then(function (newConversation) {
+                    model_1.ChatModel.findOne({ _id: newConversation._id })
+                        .populate({ path: 'participants', select: 'username' })
+                        .exec(function (err, conversation) {
+                        return res.json({ authorized: authorized.authorized, added: true, conversation: conversation });
+                    });
+                });
+                return [2 /*return*/];
+        }
+    });
+}); });
 function createConversation() {
     var users = [];
     for (var _i = 0; _i < arguments.length; _i++) {
         users[_i] = arguments[_i];
     }
-    model_1.ChatModel.create({
+    return model_1.ChatModel.create({
         _id: mongoose.Types.ObjectId(),
         participants: users,
         messages: new Array()

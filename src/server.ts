@@ -4,6 +4,7 @@ import * as mongoose from 'mongoose';
 import { UserModel, ChatModel, IChat, IUser, MessageModel } from "./model";
 import { mongoAddr, authServer } from './config';
 import axios, { AxiosRequestConfig } from 'axios';
+import { create } from "domain";
 
 const port = 5000;
 const app = express();
@@ -75,20 +76,26 @@ app.post('/addUser', async (req,res)=>{
     if(!authorized.authorized) { return res.send(authorized)}
     UserModel.find({email: { $in: req.body.users}}, function(err, users: Array<IUser>) {
     if(err) {return res.json({added: false, message: 'User already added'});}
-        const added = Boolean(users[0].contacts.includes(users[1]._id) && users[1].contacts.includes(users[0]._id));
-    if(!users[0].contacts.includes(users[1]._id)){
+    let added = false;
+    if((users[0].contacts.indexOf(users[1]._id) < 0) && (users[0].contacts.indexOf(users[1]._id) < 0)) {
         users[0].contacts.push(users[1]._id);
-        users[0].save();
-    }
-    if(!users[1].contacts.includes(users[0]._id)){
         users[1].contacts.push(users[0]._id);
+        users[0].save();
         users[1].save();
+        added = true;
     }
-    if(!added){
-        createConversation(users[0]._id,users[1]._id);
-        return res.json({added: true, message: 'User added sucessfully'});
+    if(added){
+        const conversation = createConversation(users[0]._id,users[1]._id);
+        conversation.then((data)=>{
+            ChatModel.findOne({ _id:data._id})
+            .populate({ path: 'participants', select: 'username' })
+            .exec((err, conversation) =>{
+                return res.json(conversation);
+            })
+        })
+    } else {
+        return res.json({added: false, message: 'User already added'});
     }
-    return res.json({added: false, message: 'User already added'});
     });
 });
 
@@ -135,8 +142,20 @@ app.post('/newMessage', async (req,res)=>{
      })
 });
 
+app.post('/newConversation', async (req,res)=>{
+    const authorized = await auth(req.body.token);
+    if(!authorized.authorized) { return res.json(authorized)}
+    createConversation(...req.body.users).then( newConversation => {
+        ChatModel.findOne({ _id:newConversation._id})
+            .populate({ path: 'participants', select: 'username' })
+            .exec((err, conversation) =>{
+                return res.json({authorized: authorized.authorized, added: true ,conversation: conversation});
+            })
+    })
+});
+
 function createConversation(...users){
-    ChatModel.create({
+    return ChatModel.create({
         _id:  mongoose.Types.ObjectId(),
         participants: users,
         messages:new Array()
