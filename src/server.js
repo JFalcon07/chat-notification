@@ -128,6 +128,25 @@ app.post('/getUserList', function (req, res) { return __awaiter(_this, void 0, v
         }
     });
 }); });
+app.post('/getUser', function (req, res) { return __awaiter(_this, void 0, void 0, function () {
+    var authorized;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, auth(req.body.token)];
+            case 1:
+                authorized = _a.sent();
+                if (!authorized.authorized) {
+                    return [2 /*return*/, res.send(authorized)];
+                }
+                model_1.UserModel.findOne({ _id: req.body.user }, function (err, user) {
+                    res.json(user);
+                })["catch"](function (err) {
+                    res.send('An Error has ocurred');
+                });
+                return [2 /*return*/];
+        }
+    });
+}); });
 app.post('/addUser', function (req, res) { return __awaiter(_this, void 0, void 0, function () {
     var authorized;
     return __generator(this, function (_a) {
@@ -268,6 +287,64 @@ app.post('/newConversation', function (req, res) { return __awaiter(_this, void 
         }
     });
 }); });
+app.post('/remove', function (req, res) { return __awaiter(_this, void 0, void 0, function () {
+    var authorized;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, auth(req.body.token)];
+            case 1:
+                authorized = _a.sent();
+                if (!authorized.authorized) {
+                    return [2 /*return*/, res.json(authorized)];
+                }
+                removeContact(req.body.user, req.body.contact);
+                removeContact(req.body.contact, req.body.user);
+                model_1.ChatModel.deleteOne({ _id: req.body.conversation })
+                    .then(function (conversation) {
+                    res.json(conversation);
+                });
+                return [2 /*return*/];
+        }
+    });
+}); });
+app.post('/changeUsername', function (req, res) { return __awaiter(_this, void 0, void 0, function () {
+    var authorized;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, auth(req.body.token)];
+            case 1:
+                authorized = _a.sent();
+                if (!authorized.authorized) {
+                    return [2 /*return*/, res.json(authorized)];
+                }
+                model_1.UserModel.findById({ _id: req.body.user }).then(function (user) {
+                    user.username = req.body.change;
+                    user.save();
+                    res.json({ changed: true, value: user.username });
+                });
+                return [2 /*return*/];
+        }
+    });
+}); });
+app.post('/changeLanguage', function (req, res) { return __awaiter(_this, void 0, void 0, function () {
+    var authorized;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, auth(req.body.token)];
+            case 1:
+                authorized = _a.sent();
+                if (!authorized.authorized) {
+                    return [2 /*return*/, res.json(authorized)];
+                }
+                model_1.UserModel.findById({ _id: req.body.user }).then(function (user) {
+                    user.language = req.body.change;
+                    user.save();
+                    res.json({ changed: true, value: user.language });
+                });
+                return [2 /*return*/];
+        }
+    });
+}); });
 function createConversation() {
     var users = [];
     for (var _i = 0; _i < arguments.length; _i++) {
@@ -287,6 +364,13 @@ function createMessage(user, message, type, date) {
         message: message,
         type: type,
         date: date
+    });
+}
+function removeContact(userID, contact) {
+    model_1.UserModel.findById({ _id: userID })
+        .then(function (user) {
+        user.contacts = user.contacts.filter(function (e) { return e.toString() !== contact; });
+        user.save();
     });
 }
 app.listen(port, function () {

@@ -71,6 +71,16 @@ app.post('/getUserList', async (req,res)=>{
     })
 });
 
+app.post('/getUser', async (req,res)=>{
+    const authorized = await auth(req.body.token);
+    if(!authorized.authorized) { return res.send(authorized)}
+    UserModel.findOne({ _id: req.body.user }, function(err, user) {
+        res.json(user);
+    }).catch(err => {
+        res.send('An Error has ocurred');
+    })
+});
+
 app.post('/addUser', async (req,res)=>{
     const authorized = await auth(req.body.token);
     if(!authorized.authorized) { return res.send(authorized)}
@@ -154,6 +164,36 @@ app.post('/newConversation', async (req,res)=>{
     })
 });
 
+app.post('/remove', async (req,res)=>{
+    const authorized = await auth(req.body.token);
+    if(!authorized.authorized) { return res.json(authorized)}
+        removeContact(req.body.user,req.body.contact);
+        removeContact(req.body.contact,req.body.user);
+        ChatModel.deleteOne({_id: req.body.conversation})
+        .then(conversation => {
+            res.json(conversation);
+        });
+});
+
+app.post('/changeUsername', async (req,res)=>{
+    const authorized = await auth(req.body.token);
+    if(!authorized.authorized) { return res.json(authorized)}
+    UserModel.findById({_id: req.body.user}).then(user => {
+        user.username = req.body.change;
+        user.save();
+        res.json({changed: true, value: user.username});
+    });
+});
+app.post('/changeLanguage', async (req,res)=>{
+    const authorized = await auth(req.body.token);
+    if(!authorized.authorized) { return res.json(authorized)}
+    UserModel.findById({_id: req.body.user}).then(user => {
+        user.language = req.body.change;
+        user.save();
+        res.json({changed: true, value: user.language});
+    });
+});
+
 function createConversation(...users){
     return ChatModel.create({
         _id:  mongoose.Types.ObjectId(),
@@ -170,6 +210,15 @@ function createMessage(user, message,type,date){
         message: message,
         type: type,
         date: date
+    });
+}
+
+
+function removeContact(userID, contact){
+    UserModel.findById({_id: userID})
+    .then(user => {
+        user.contacts = user.contacts.filter(e => e.toString() !== contact);
+        user.save();
     });
 }
 
