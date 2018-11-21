@@ -181,7 +181,7 @@ app.post('/changeUsername', async (req,res)=>{
     UserModel.findById({_id: req.body.user}).then(user => {
         user.username = req.body.change;
         user.save();
-        res.json({changed: true, value: user.username});
+        res.json({changed: true, user: user._id ,value: user.username});
     });
 });
 app.post('/changeLanguage', async (req,res)=>{
